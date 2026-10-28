@@ -42,6 +42,11 @@ table{width:100%;border-collapse:collapse}td,th{padding:7px 6px;border-bottom:1p
 .stp small{display:block;font-size:10px;color:var(--mut)}
 .stp.on{border-color:var(--ac)}
 .swc.on{border-color:var(--ac)}
+.slots,.tiles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.slot{min-width:64px;min-height:72px;border:2px dashed var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:center;padding:3px}
+.slot.f{border-color:transparent}.slot.ok{border:2px solid var(--l2)}.slot.bad{border:2px solid var(--ac)}
+.tile{display:flex;flex-direction:column;align-items:center;min-width:58px;padding:6px 12px;border:1px solid var(--bd);border-bottom-width:3px;border-radius:10px;background:var(--card);cursor:grab;touch-action:manipulation}
+.tile .th{font-size:24px;line-height:1.2}.tile .tp{font-size:11px;color:var(--mut)}.tile:active{transform:translateY(1px)}
 </style></head><body><div class="wrap">
 <h1><span>🧠 Mind Map Hanzi HSK</span><small id="tot"></small></h1>
 <div class="mut" style="margin:-6px 0 10px">Dashboard belajar Mandarin milik <b style="color:var(--tx)">Tiar Halawa</b></div><nav id="nav"></nav><main id="app"></main>
@@ -63,10 +68,10 @@ const saveK=()=>{store.set('hsk_known',[...known]);document.getElementById('tot'
 function speak(t){try{const u=new SpeechSynthesisUtterance(t);u.lang='zh-CN';u.rate=.8;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
 const lvTag=l=>`<span class="lv" style="background:${LC[l]||'var(--l1)'}">HSK ${l}</span>`;
 let tab='home',center='学',sel=null;
-const tabs=[['home','Beranda'],['map','Mind Map'],['cards','Kartu'],['list','Daftar']];
+const tabs=[['home','Beranda'],['map','Mind Map'],['cards','Kartu'],['sent','Susun Kalimat'],['list','Daftar']];
 function nav(){document.getElementById('nav').innerHTML=tabs.map(([k,n])=>`<button class="${tab===k?'on':''}" data-t="${k}">${n}</button>`).join('')}
 document.getElementById('nav').onclick=e=>{const t=e.target.dataset.t;if(t){tab=t;render()}};
-function render(){nav();({home,map,cards,list})[tab]()}
+function render(){nav();({home,map,cards,sent,list})[tab]()}
 const app=()=>document.getElementById('app');
 function chars(w){return [...w.s].filter(c=>CJK.test(c)).map(c=>`<span class="chip" data-c="${c}">${c}</span>`).join('')}
 document.addEventListener('click',e=>{const c=e.target.closest('[data-c]');if(c){center=c.dataset.c;sel=null;tab='map';render();scrollTo(0,0)}});
@@ -107,10 +112,11 @@ document.addEventListener('click',e=>{const w=e.target.closest('[data-w]');if(w&
 
 let deck=[],flip=false,fo={lv:null,dir:'h',unk:true};
 function cards(){const ls=levels();fo.lv=fo.lv||new Set(ls.filter(l=>l<=2||true).slice(0,1));
- let h=`<div class="card row">${ls.map(l=>`<label><input type="checkbox" data-fl="${l}" ${fo.lv.has(l)?'checked':''}> HSK ${l}</label>`).join('')}<select id="dir"><option value="h" ${fo.dir==='h'?'selected':''}>Hanzi → arti</option><option value="e" ${fo.dir==='e'?'selected':''}>Arti → hanzi</option></select><label><input type="checkbox" id="unk" ${fo.unk?'checked':''}> hanya yang belum hafal</label><button class="btn pri" id="st">Mulai / Acak</button></div>`;
+ let h=`<div class="card row">${ls.map(l=>`<label><input type="checkbox" data-fl="${l}" ${fo.lv.has(l)?'checked':''}> HSK ${l}</label>`).join('')}<select id="dir"><option value="h" ${fo.dir==='h'?'selected':''}>Hanzi → arti</option><option value="e" ${fo.dir==='e'?'selected':''}>Arti → hanzi</option><option value="ph" ${fo.dir==='ph'?'selected':''}>Pinyin + hanzi → arti</option><option value="p" ${fo.dir==='p'?'selected':''}>Pinyin → arti</option></select><label><input type="checkbox" id="unk" ${fo.unk?'checked':''}> hanya yang belum hafal</label><button class="btn pri" id="st">Mulai / Acak</button></div>`;
  if(!deck.length)h+='<div class="card mut">Pilih level lalu tekan Mulai. Tombol Ingat menandai kata sebagai hafal; Lupa memutar kartu ke belakang antrean.</div>';
- else{const w=byId[deck[0]];const front=fo.dir==='h'?`<div class="big">${esc(w.s)}</div>`:`<div style="font-size:22px">${esc(w.e)}</div>`;
-  const back=`${fo.dir==='e'?`<div class="big">${esc(w.s)}</div>`:`<div style="font-size:20px">${esc(w.e)}</div>`}<div><b>${esc(w.p)}</b> ${w.t!==w.s?`<span class="mut">${esc(w.t)}</span>`:''}</div>`;
+  else{const w=byId[deck[0]];const hz=`<div class="big">${esc(w.s)}</div>`,ar=`<div style="font-size:20px">${esc(w.e)}</div>`,pyl=`<div><b>${esc(w.p)}</b></div>`,tr=w.t!==w.s?`<div class="mut">${esc(w.t)}</div>`:'';
+  const front=fo.dir==='h'?hz:fo.dir==='ph'?hz+`<div style="font-size:22px"><b>${esc(w.p)}</b></div>`:fo.dir==='p'?`<div style="font-size:36px;font-weight:600">${esc(w.p)}</div>`:`<div style="font-size:22px">${esc(w.e)}</div>`;
+  const back=fo.dir==='e'?hz+pyl+tr:fo.dir==='p'?hz+ar+tr:ar+(fo.dir==='ph'?'':pyl)+tr;
   h+=`<div class="mut" style="text-align:center">Sisa ${deck.length} · ${lvTag(w.l)}</div><div class="card fc" id="fc">${front}${flip?back:'<div class="mut">tap untuk membalik</div>'}</div>`;
   if(flip)h+=`<div class="row" style="justify-content:center"><button class="btn" id="no">✗ Lupa</button><button class="btn" data-sp="${esc(w.s)}">🔊</button><button class="btn" data-c="${[...w.s][0]}">🧠 Mind map</button><button class="btn pri" id="yes">✓ Ingat</button></div>`}
  if(deck.length&&flip&&byId[deck[0]])h+=swHtml(byId[deck[0]].s);app().innerHTML=h;if(deck.length&&flip&&byId[deck[0]])swInit(byId[deck[0]].s);
@@ -186,5 +192,105 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-swa],[data
  if(a==='play')swPlay();else if(a==='quiz')swQuiz();
  else if(a==='out'){sw.out=!sw.out;if(sw.w)sw.w[sw.out?'showOutline':'hideOutline']()}});
 document.addEventListener('change',e=>{if(e.target.id==='swsp')sw.speed=+e.target.value});
+/* ===== Susun Kalimat (puzzle) ===== */
+const SENT_RAW=`1|S+V+O|我/wǒ 喜欢/xǐhuan 苹果/píngguǒ|Saya suka apel.
+1|S+V+O|他/tā 喝/hē 茶/chá|Dia minum teh.
+1|S+V+O|妈妈/māma 做/zuò 饭/fàn|Ibu memasak.
+1|Kalimat 是: A+是+B|我/wǒ 是/shì 学生/xuésheng|Saya adalah pelajar.
+1|Kalimat 是: A+是+B|这/zhè 是/shì 我/wǒ 的/de 书/shū|Ini adalah buku saya.
+1|Negasi 不: S+不+V|我/wǒ 不/bù 是/shì 老师/lǎoshī|Saya bukan guru.
+1|Negasi 没: S+没+有+O|他/tā 没/méi 有/yǒu 钱/qián|Dia tidak punya uang.
+1|Tanya 吗: kalimat+吗|你/nǐ 好/hǎo 吗/ma|Apa kabar?
+1|Tanya 什么|你/nǐ 叫/jiào 什么/shénme 名字/míngzi|Siapa namamu?
+1|Tanya 哪儿|你/nǐ 在/zài 哪儿/nǎr|Kamu ada di mana?
+1|Tanya 谁|他/tā 是/shì 谁/shéi|Dia itu siapa?
+1|Tempat: S+在+tempat+V+O|我/wǒ 在/zài 家/jiā 看/kàn 书/shū|Saya membaca buku di rumah.
+1|Modal 想: S+想+V|我/wǒ 想/xiǎng 去/qù 北京/Běijīng|Saya ingin pergi ke Beijing.
+1|Modal 会: S+会+V|他/tā 会/huì 说/shuō 汉语/Hànyǔ|Dia bisa berbicara bahasa Mandarin.
+1|Modal 能: S+能+V|你/nǐ 能/néng 来/lái 吗/ma|Bisakah kamu datang?
+1|Kata sifat: S+很+Adj|今天/jīntiān 很/hěn 热/rè|Hari ini panas.
+1|Waktu: S+waktu+V+O|我/wǒ 明天/míngtiān 去/qù 学校/xuéxiào|Besok saya pergi ke sekolah.
+1|Kuantitas: angka+kata bantu+N|我/wǒ 有/yǒu 两/liǎng 个/ge 朋友/péngyou|Saya punya dua teman.
+2|Sedang: S+正在+V|他/tā 正在/zhèngzài 看/kàn 电视/diànshì|Dia sedang menonton televisi.
+2|Selesai 了: V+了+O|我/wǒ 昨天/zuótiān 买/mǎi 了/le 一/yì 本/běn 书/shū|Kemarin saya membeli sebuah buku.
+2|Pengalaman 过: V+过|我/wǒ 去/qù 过/guo 中国/Zhōngguó|Saya pernah pergi ke Tiongkok.
+2|Perbandingan 比: A+比+B+Adj|他/tā 比/bǐ 我/wǒ 高/gāo|Dia lebih tinggi daripada saya.
+2|Tanya 怎么样|今天/jīntiān 天气/tiānqì 怎么样/zěnmeyàng|Bagaimana cuaca hari ini?
+2|Tempat: S+在+tempat+V+O|我/wǒ 每天/měitiān 在/zài 学校/xuéxiào 吃饭/chīfàn|Setiap hari saya makan di sekolah.
+2|Modal 想: S+想+V|我/wǒ 想/xiǎng 喝/hē 一/yì 杯/bēi 水/shuǐ|Saya ingin minum segelas air.
+2|Modal 可以: S+可以+V|这儿/zhèr 可以/kěyǐ 坐/zuò 吗/ma|Bolehkah duduk di sini?
+2|因为…所以…|因为/yīnwèi 下雨，/xiàyǔ 所以/suǒyǐ 我/wǒ 不/bù 出去/chūqù|Karena hujan, saya tidak keluar.
+2|Pilihan 还是|你/nǐ 喝/hē 茶/chá 还是/háishi 咖啡/kāfēi|Kamu minum teh atau kopi?
+2|Jarak 离: A+离+B+Adj|我家/wǒjiā 离/lí 学校/xuéxiào 很/hěn 近/jìn|Rumah saya dekat dari sekolah.
+2|Arah 从…到…|我/wǒ 从/cóng 家/jiā 走路/zǒulù 到/dào 学校/xuéxiào|Saya berjalan kaki dari rumah ke sekolah.
+2|Terlalu 太…了|这/zhè 个/ge 太/tài 贵/guì 了/le|Yang ini terlalu mahal.
+2|Pemberi 给: S+给+O+V|他/tā 给/gěi 我/wǒ 打/dǎ 电话/diànhuà|Dia menelepon saya.
+3|把: S+把+O+V+其他|我/wǒ 把/bǎ 书/shū 放/fàng 在/zài 桌子上/zhuōzishang|Saya meletakkan buku itu di atas meja.
+3|被: O+被+S+V|我/wǒ 的/de 手机/shǒujī 被/bèi 他/tā 拿走/názǒu 了/le|Ponsel saya dibawa pergi olehnya.
+3|Komplemen 得: V+得+Adj|他/tā 说/shuō 汉语/Hànyǔ 说/shuō 得/de 很/hěn 好/hǎo|Dia berbicara bahasa Mandarin dengan sangat baik.
+3|虽然…但是…|虽然/suīrán 很/hěn 累，/lèi 但是/dànshì 我/wǒ 很/hěn 高兴/gāoxìng|Meskipun lelah, saya senang.
+3|如果…就…|如果/rúguǒ 明天/míngtiān 下雨，/xiàyǔ 我们/wǒmen 就/jiù 不/bù 去/qù 了/le|Jika besok hujan, kita tidak jadi pergi.
+3|一边…一边…|她/tā 一边/yìbiān 听/tīng 音乐/yīnyuè 一边/yìbiān 做/zuò 作业/zuòyè|Dia mengerjakan PR sambil mendengarkan musik.
+3|先…然后…|我/wǒ 先/xiān 吃饭，/chīfàn 然后/ránhòu 去/qù 学校/xuéxiào|Saya makan dulu, lalu pergi ke sekolah.
+3|是…的|你/nǐ 是/shì 什么/shénme 时候/shíhou 来/lái 的/de|Kamu datang kapan?
+3|越来越|天气/tiānqì 越来越/yuèláiyuè 冷/lěng 了/le|Cuaca semakin dingin.
+3|一…就…|他/tā 一/yī 回家/huíjiā 就/jiù 睡觉/shuìjiào|Begitu pulang, dia langsung tidur.
+3|对…感兴趣|我/wǒ 对/duì 历史/lìshǐ 很/hěn 感兴趣/gǎnxìngqù|Saya sangat tertarik pada sejarah.
+4|不但…而且…|他/tā 不但/búdàn 聪明，/cōngmíng 而且/érqiě 很/hěn 努力/nǔlì|Dia bukan hanya pintar, tetapi juga sangat rajin.
+4|即使…也…|即使/jíshǐ 很/hěn 忙，/máng 他/tā 也/yě 会/huì 来/lái|Sekalipun sangat sibuk, dia tetap akan datang.
+4|只有…才…|只有/zhǐyǒu 努力，/nǔlì 才/cái 能/néng 成功/chénggōng|Hanya dengan berusaha, barulah bisa berhasil.
+4|把: S+把+O+V+其他|请/qǐng 你/nǐ 把/bǎ 窗户/chuānghu 关/guān 上/shàng|Tolong tutup jendelanya.
+4|让: S+让+O+V|老师/lǎoshī 让/ràng 我们/wǒmen 回答/huídá 问题/wèntí|Guru menyuruh kami menjawab pertanyaan.
+4|Perbandingan 比: A+比+B+Adj|这/zhè 个/ge 房间/fángjiān 比/bǐ 那/nà 个/ge 大/dà 得多/déduō|Kamar ini jauh lebih besar daripada yang itu.
+4|对…来说|对/duì 我/wǒ 来说，/láishuō 学习/xuéxí 汉语/Hànyǔ 不/bù 难/nán|Bagi saya, belajar bahasa Mandarin tidak sulit.
+5|连…都…|他/tā 连/lián 饭/fàn 都/dōu 忘/wàng 了/le 吃/chī|Dia bahkan lupa makan.
+5|无论…都…|无论/wúlùn 天气/tiānqì 怎么样，/zěnmeyàng 我/wǒ 都/dōu 去/qù|Apa pun cuacanya, saya tetap pergi.
+5|尽管…还是…|尽管/jǐnguǎn 很/hěn 困难，/kùnnán 他/tā 还是/háishi 坚持/jiānchí 下来/xiàlái 了/le|Walaupun sulit, dia tetap bertahan.
+5|难道…吗|难道/nándào 你/nǐ 不/bù 知道/zhīdào 吗/ma|Masa kamu tidak tahu?
+5|与其…不如…|与其/yǔqí 等，/děng 不如/bùrú 自己/zìjǐ 去/qù|Daripada menunggu, lebih baik pergi sendiri.
+5|被: O+被+S+V|这/zhè 件/jiàn 事/shì 被/bèi 大家/dàjiā 忘记/wàngjì 了/le|Hal ini dilupakan semua orang.
+5|否则|你/nǐ 快/kuài 点儿，/diǎnr 否则/fǒuzé 会/huì 迟到/chídào|Cepatlah, kalau tidak kamu akan terlambat.`;
+let skDone=new Set(store.get('sk_done',[])),skImp=store.get('sk_imp',[]),sents=[];
+let sk={lv:0,pat:'',py:true,q:null,ord:[],sl:[],res:'',miss:0,hint:0,streak:0,msg:''};
+function skBuild(){sents=[];[...SENT_RAW.split('\n'),...skImp].forEach(ln=>{const f=ln.trim().split('|');if(f.length<4)return;
+ const t=f[2].trim().split(/\s+/).map(x=>{const k=x.lastIndexOf('/');return{h:x.slice(0,k),p:x.slice(k+1)}}),e=f[3].trim(),j=t.map(x=>x.h).join('');
+ sents.push({id:'k'+f[0]+'-'+j,l:+f[0]||1,pat:f[1].trim(),t,e,s:j+(/\?$/.test(e)?'？':/!$/.test(e)?'！':'。')})})}
+function skNew(){const p=sents.filter(s=>(!sk.lv||s.l===sk.lv)&&(!sk.pat||s.pat===sk.pat));if(!p.length){sk.q=null;return}
+ const o2=p.filter(s=>!sk.q||s.id!==sk.q.id),u=o2.filter(s=>!skDone.has(s.id)),a=u.length?u:o2.length?o2:p;
+ sk.q=a[Math.random()*a.length|0];const t=sk.q.t;let o=t.map((_,i)=>i),n=0;
+ do{o.sort(()=>Math.random()-.5)}while(n++<8&&o.every((v,i)=>t[v].h===t[i].h));
+ sk.ord=o;sk.sl=t.map(()=>-1);sk.res='';sk.miss=0;sk.hint=0}
+function skCheck(){const q=sk.q;if(sk.sl.includes(-1)){sk.res='';return}
+ if(sk.sl.every((ti,j)=>q.t[ti].h===q.t[j].h)){sk.res='ok';if(!sk.miss&&!sk.hint){sk.streak++;if(!skDone.has(q.id)){skDone.add(q.id);store.set('sk_done',[...skDone])}}}
+ else{sk.res='bad';sk.miss++;sk.streak=0}}
+function skPut(ti,j){const s=sk.sl,from=s.indexOf(ti),prev=s[j];if(from>=0)s[from]=prev;s[j]=ti;skCheck()}
+function skHint(){const q=sk.q;if(sk.res==='ok')return;sk.hint++;
+ sk.sl=sk.sl.map((ti,j)=>ti>=0&&q.t[ti].h===q.t[j].h?ti:-1);const j=sk.sl.indexOf(-1);if(j<0)return;
+ sk.sl[j]=sk.ord.find(i=>!sk.sl.includes(i)&&q.t[i].h===q.t[j].h);skCheck()}
+const skTile=(w,i)=>`<button class="tile" draggable="true" data-skt="${i}" style="border-color:${LC[sk.q.l]}"><span class="th">${esc(w.h)}</span>${sk.py?`<span class="tp">${esc(w.p)}</span>`:''}</button>`;
+function sent(){if(!sents.length)skBuild();if(!sk.q)skNew();
+ const pats=[...new Set(sents.filter(s=>!sk.lv||s.l===sk.lv).map(s=>s.pat))],pool=sents.filter(s=>(!sk.lv||s.l===sk.lv)&&(!sk.pat||s.pat===sk.pat)),dn=pool.filter(s=>skDone.has(s.id)).length,q=sk.q;
+ let h=`<div class="card row"><select id="skl"><option value="0">Semua level</option>${[1,2,3,4,5].map(l=>`<option value="${l}" ${sk.lv===l?'selected':''}>HSK ${l}</option>`).join('')}</select><select id="skp"><option value="">Semua pola</option>${pats.map(p=>`<option ${sk.pat===p?'selected':''}>${esc(p)}</option>`).join('')}</select><label><input type="checkbox" id="skpy" ${sk.py?'checked':''}> pinyin di kepingan</label></div><div class="mut" style="margin:-4px 0 8px">Dikuasai ${dn}/${pool.length} kalimat · beruntun ${sk.streak} 🔥 · ${sents.length} kalimat tersedia</div>`;
+ if(!q)h+='<div class="card mut">Belum ada kalimat untuk filter ini.</div>';
+ else{h+=`<div class="card"><div class="mut">Susun kepingan menjadi kalimat Mandarin (ketuk atau seret):</div><div style="font-size:19px;font-weight:600;margin:4px 0">${esc(q.e)}</div><div>${lvTag(q.l)}<span class="chip" style="font-size:12px;cursor:default">${esc(q.pat)}</span></div>
+<div class="slots">${sk.sl.map((ti,j)=>{const w=ti>=0?q.t[ti]:null,bad=sk.res==='bad'&&w&&w.h!==q.t[j].h;return `<div class="slot ${w?'f ':''}${sk.res==='ok'?'ok':bad?'bad':''}" data-skj="${j}">${w?skTile(w,ti):`<span class="mut">${j+1}</span>`}</div>`}).join('')}</div>
+<div class="tiles">${sk.ord.filter(i=>!sk.sl.includes(i)).map(i=>skTile(q.t[i],i)).join('')||'<span class="mut">Semua kepingan terpakai</span>'}</div>
+${sk.res==='bad'?'<div style="color:var(--ac)">Belum tepat — ketuk kepingan bertanda merah untuk memperbaiki.</div>':''}
+<div class="row" style="margin-top:10px"><button class="btn" data-ska="hint">💡 Petunjuk</button><button class="btn" data-ska="reset">↺ Ulang</button>${sk.res==='ok'?`<button class="btn" data-sp="${esc(q.s)}">🔊</button><button class="btn pri" data-ska="new">Berikutnya ›</button>`:'<button class="btn" data-ska="new">⏭ Lewati</button>'}</div></div>`;
+ if(sk.res==='ok')h+=`<div class="card" style="border-color:var(--l2)"><b style="color:var(--l2)">✓ Benar!</b>${sk.miss||sk.hint?'':' Dikuasai ⭐'}<div class="hz" style="font-size:28px;margin:6px 0">${esc(q.s)}</div><div><b>${esc(q.t.map(x=>x.p).join(' '))}</b></div><div class="mut">${esc(q.e)}</div><div class="mut" style="margin-top:6px">Ketuk kata untuk membuka mind map-nya:</div><div>${q.t.map(x=>`<span class="chip" data-c="${[...x.h].find(c=>CJK.test(c))||''}">${esc(x.h.replace(/[，,]/g,''))}<small class="mut"> ${esc(x.p)}</small></span>`).join('')}</div></div>`}
+ h+=`<div class="card"><b>Tambah kalimat</b><div class="mut">Satu baris per kalimat: <code>level|pola|hanzi/pinyin hanzi/pinyin …|arti</code>. Contoh: <code>1|S+V+O|我/wǒ 爱/ài 你/nǐ|Saya cinta kamu.</code></div><textarea id="skta" rows="4" style="width:100%;margin:6px 0"></textarea><div class="row"><button class="btn pri" id="skimp">Impor</button><button class="btn" id="skclr">Hapus hasil impor</button><span class="mut">${esc(sk.msg)}</span></div></div>`;
+ app().innerHTML=h;const g=id=>document.getElementById(id);
+ g('skl').onchange=e=>{sk.lv=+e.target.value;sk.pat='';sk.q=null;render()};
+ g('skp').onchange=e=>{sk.pat=e.target.value;sk.q=null;render()};
+ g('skpy').onchange=e=>{sk.py=e.target.checked;render()};
+ g('skimp').onclick=()=>{let n=0;g('skta').value.split('\n').forEach(l=>{const f=l.trim().split('|');if(f.length>=4&&/^[1-5]$/.test(f[0])&&f[2].includes('/')){skImp.push(l.trim());n++}});store.set('sk_imp',skImp);skBuild();sk.msg=n+' kalimat ditambahkan';render()};
+ g('skclr').onclick=()=>{if(confirm('Hapus semua kalimat hasil impor?')){skImp=[];store.set('sk_imp',[]);skBuild();sk.q=null;sk.msg='';render()}};
+ document.querySelectorAll('.tile').forEach(t=>t.ondragstart=e=>e.dataTransfer.setData('text/plain',t.dataset.skt));
+ document.querySelectorAll('.slot').forEach(s=>{s.ondragover=e=>e.preventDefault();s.ondrop=e=>{e.preventDefault();if(sk.res==='ok')return;const ti=parseInt(e.dataTransfer.getData('text/plain'));if(!isNaN(ti)){skPut(ti,+s.dataset.skj);render()}}})}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-skt],[data-ska]');if(!b||tab!=='sent'||!sk.q)return;
+ if(b.dataset.skt!==undefined){const ti=+b.dataset.skt,sj=b.closest('[data-skj]');
+  if(sj){if(sk.res!=='ok'){sk.sl[+sj.dataset.skj]=-1;sk.res=''}}else{const j=sk.sl.indexOf(-1);if(j>=0)skPut(ti,j)}}
+ else{const a=b.dataset.ska;if(a==='new'){if(sk.res!=='ok')sk.streak=0;skNew()}else if(a==='reset'){sk.sl=sk.sl.map(()=>-1);sk.res=''}else if(a==='hint')skHint()}
+ render()});
 build();render();
 </script></body></html>
